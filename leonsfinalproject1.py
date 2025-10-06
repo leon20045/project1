@@ -1,4 +1,4 @@
-# ================================================================
+
 # PROJECT 1: MACHINE LEARNING PIPELINE
 #Leon Olejarski
 
@@ -14,6 +14,8 @@ import seaborn as sns
 from scipy.stats import randint
 import joblib
 
+#imthatguyimthegoattype
+
 # STEP 1: LOAD AND INSPECT DATA
 # ----------------------------
 
@@ -27,6 +29,7 @@ print(data_file.head())
 print(data_file.columns)
 
 # Print each variable for a quick check
+#Iloveprintingdata
 print(data_file.X)
 print(data_file.Y)
 print(data_file.Z)
@@ -43,9 +46,9 @@ from sklearn.model_selection import StratifiedShuffleSplit
 split_data = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
 
 # Apply stratified sampling
-for tr_idx, ts_idx in split_data.split(data_file, data_file["Step"]):
-    data_train = data_file.iloc[tr_idx].reset_index(drop=True)
-    data_test = data_file.iloc[ts_idx].reset_index(drop=True)
+tr_idx, ts_idx = next(split_data.split(data_file, data_file["Step"])) 
+data_train = data_file.iloc[tr_idx].reset_index(drop=True)
+data_test = data_file.iloc[ts_idx].reset_index(drop=True)
 
 # Display dataset sizes and class distributions
 print("\nStratified sampling complete.")
@@ -86,9 +89,12 @@ plt.title("Correlation Matrix (Absolute Pearson Values)")
 plt.show()
 
 # Individual correlations (rounded for clarity)
-corr_X = abs(ytrain.corr(Xtrain['X']))
-corr_Y = abs(ytrain.corr(Xtrain['Y']))
-corr_Z = abs(ytrain.corr(Xtrain['Z']))
+corr_values = {}
+for col in ['X', 'Y', 'Z']:
+    corr_values[col] = abs(ytrain.corr(Xtrain[col]))
+
+corr_X, corr_Y, corr_Z = corr_values['X'], corr_values['Y'], corr_values['Z']
+
 
 print("\nCorrelation of each feature with 'Step':")
 print(f"  | X vs Step: {corr_X:.4f}")
@@ -137,17 +143,22 @@ forest_grid = {
 }
 
 # Create RandomizedSearchCV pipeline
+# RandomizedSearchCV setup (clearer style)
+rf_random_search = RandSearch(
+    estimator=rnd_forest,
+    param_distributions=forest_grid,
+    n_iter=6,
+    cv=4,
+    scoring='accuracy',
+    random_state=42,
+    n_jobs=-1
+)
+
+# Wrap in pipeline
 pipe_RFSearch = pln([
-    ('model', RandSearch(
-        estimator=rnd_forest,
-        param_distributions=forest_grid,
-        n_iter=6,
-        cv=4,
-        scoring='accuracy',
-        random_state=42,
-        n_jobs=-1
-    ))
+    ('model', rf_random_search)
 ])
+
 
 
 # STEP 6: STACKING CLASSIFIERS
@@ -157,10 +168,10 @@ pipe_RFSearch = pln([
 from sklearn.ensemble import StackingClassifier
 
 
-combo6 = [('Decision Tree', pipe_DecTree), ('Random Forest', pipe_RFSearch)]
+combo5 = [('Decision Tree', pipe_DecTree), ('Random Forest', pipe_RFSearch)]
 
 # Create stacking classifiers
-stacked_6 = StackingClassifier(estimators=combo6, cv=4, n_jobs=-1, passthrough=False)
+stacked_5 = StackingClassifier(estimators=combo5, cv=4, n_jobs=-1, passthrough=False)
 
 # STEP 7: MODEL TRAINING & EVALUATION
 # ----------------------------
@@ -174,6 +185,10 @@ prec_dict = {}
 rec_dict = {}
 f1_dict = {}
 
+
+
+
+
 # Model list to iterate through
 model_collection = [
     ('Logistic Regression', pipe_LogReg),
@@ -181,7 +196,7 @@ model_collection = [
     ('SVM', pipe_SVM),
     ('Random Forest', pipe_RFSearch),
 
-    ('Stacked Classifier 6', stacked_6)
+    ('Stacked Classifier 5', stacked_5)
 ]
 
 # Loop through each model for training and performance evaluation
@@ -200,6 +215,11 @@ for name, mdl in model_collection:
     y_pred_dict[name] = mdl.predict(Xtest)
     conf_mats[name] = confusion_matrix(ytest, y_pred_dict[name])
 
+    # Compute precision, recall, and F1 scores
+    prec_dict[name] = precision_score(ytest, y_pred_dict[name], average='weighted', zero_division=0)
+    rec_dict[name] = recall_score(ytest, y_pred_dict[name], average='weighted', zero_division=0)
+    f1_dict[name] = f1_score(ytest, y_pred_dict[name], average='weighted', zero_division=0)
+
     # Plot confusion matrix for each model
     plt.figure(figsize=(4, 3))
     sns.heatmap(conf_mats[name], cmap='viridis', annot=True, fmt='d')
@@ -208,11 +228,6 @@ for name, mdl in model_collection:
     plt.ylabel("Actual")
     plt.tight_layout()
     plt.show()
-
-    # Compute precision, recall, and F1 scores
-    prec_dict[name] = precision_score(ytest, y_pred_dict[name], average='weighted', zero_division=0)
-    rec_dict[name] = recall_score(ytest, y_pred_dict[name], average='weighted', zero_division=0)
-    f1_dict[name] = f1_score(ytest, y_pred_dict[name], average='weighted', zero_division=0)
 
     # Display evaluation metrics
     print(f"Precision: {prec_dict[name]:.3f}")
@@ -223,5 +238,5 @@ for name, mdl in model_collection:
 # ----------------------------
 # Save the trained model to disk for future use (deployment or testing).
 
-joblib.dump(stacked_6, 'Projectleon.joblib')
+joblib.dump(stacked_5, 'Projectleon.joblib')
 print("\nModel saved successfully as 'Projectleon.joblib'")
